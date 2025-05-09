@@ -1,0 +1,150 @@
+acao\operacoes.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Operações</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+
+<body>
+    <!-- Menu Hamburger -->
+    <nav class="navbar">
+        <div class="hamburger">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="deslocamentos.html"><i class="fas fa-route"></i> Deslocamentos</a></li>
+            <li><a href="operacoes.html"><i class="fas fa-cogs"></i> Operações</a></li>
+            <li><a href="sobre.html"><i class="fas fa-info-circle"></i> Sobre</a></li>
+            <li><a href="contato.html"><i class="fas fa-envelope"></i> Contato</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <h1>Controle de Operações</h1>
+
+        <!-- Seção de Mobilização -->
+        <div class="mobilizacao-section">
+            <h2>Controle de Mobilização</h2>
+            <div class="mobilizacao-info">
+                <div class="status-mobilizacao">
+                    <span class="status-indicator" id="statusIndicator"></span>
+                    <span id="statusText">Aguardando mobilização</span>
+                </div>
+                <div class="tempo-mobilizacao" id="horarioMobilizacao">
+                    <span><i class="far fa-clock"></i> Hora: <span id="horaRegistro">--:--:--</span></span>
+                </div>
+            </div>
+            <div class="mobilizacao-actions">
+                <button type="button" id="iniciarMobilizacao" class="btn-iniciar">
+                    <i class="fas fa-tools"></i> Equipe em montagem dos equipamentos
+                </button>
+                <button type="button" id="finalizarMobilizacao" class="btn-finalizar" disabled>
+                    <i class="fas fa-clipboard-check"></i> Equipe desmontando o equipamento
+                </button>
+            </div>
+        </div>
+
+        <!-- Adicionar acima do formulário -->
+        <div class="usuario-info">
+            <div class="usuario-logado">
+                <i class="fas fa-user"></i>
+                <span>Operador: <strong id="nomeUsuarioLogado">Sistema</strong></span>
+            </div>
+        </div>
+
+        <!-- Formulário de Operações (inicialmente desabilitado) -->
+        <form id="operacaoForm" class="disabled-form">
+            <div class="form-disabled-overlay" id="formOverlay">
+                <div class="overlay-message">
+                    <i class="fas fa-lock"></i>
+                    <p>Complete a mobilização para habilitar o formulário de operações</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="deslocamentoSelect">Deslocamento Associado:</label>
+                <select id="deslocamentoSelect" disabled>
+                    <option value="">Nenhum deslocamento</option>
+                    <!-- Opções serão carregadas via JavaScript -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="inicioOperacao">Data/Hora Início:</label>
+                <input type="datetime-local" id="inicioOperacao" disabled required>
+            </div>
+
+            <div class="form-group">
+                <label for="tipoOperacao">Tipo de Operação:</label>
+                <input type="text" id="tipoOperacao" placeholder="Tipo da operação" disabled required>
+            </div>
+
+            <div class="form-group">
+                <label for="nomePocoServ">Poço/Serviço:</label>
+                <input type="text" id="nomePocoServ" placeholder="Nome do poço/serviço" disabled required>
+            </div>
+
+            <div class="form-group">
+                <label for="nomeOperador">Operador:</label>
+                <input type="text" id="nomeOperador" placeholder="Nome do operador" disabled required>
+            </div>
+
+            <div class="form-group">
+                <label for="volumeBbl">Volume (bbl):</label>
+                <input type="number" id="volumeBbl" placeholder="Volume em bbl" disabled required>
+            </div>
+
+            <div class="form-group">
+                <label for="temperatura">Temperatura (°C):</label>
+                <input type="number" id="temperatura" placeholder="Temperatura em °C" disabled required>
+            </div>
+
+            <div class="form-group">
+                <label for="pressao">Pressão (PSI):</label>
+                <input type="number" id="pressao" placeholder="Pressão em PSI" disabled required>
+            </div>
+
+            <div class="form-group">
+                <label for="descricaoAtividades">Descrição das Atividades:</label>
+                <textarea id="descricaoAtividades" placeholder="Descrição das atividades realizadas" rows="4"
+                    disabled></textarea>
+            </div>
+
+            <div class="form-group">
+                <button type="button" id="capturarLocalizacao" disabled>Capturar Localização</button>
+                <div id="localizacaoInfo" style="display: none;">
+                    <p>Latitude: <span id="latitude"></span></p>
+                    <p>Longitude: <span id="longitude"></span></p>
+                </div>
+            </div>
+
+            <button type="submit" id="salvarOperacao" disabled>Salvar Operação</button>
+        </form>
+
+        <h2>Histórico de Operações</h2>
+        <div class="historico-container">
+            <ul id="historicoOperacoes"></ul>
+        </div>
+
+        <div class="botoes-acao">
+            <button type="button" id="gerarPDFOperacoes">Gerar PDF do Histórico</button>
+            <button type="button" id="limparHistoricoOperacoes" class="btn-limpar">Limpar Histórico</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/comum.js"></script>
+    <script src="js/operacoes.js"></script>
+</body>
+
+</html>
+```

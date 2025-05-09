@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema de Controle de Operações</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="icon" href="data:,">
+</head>
+
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-header">
+            <!-- Substituir a imagem por um ícone para evitar erro 404 -->
+            <div class="login-logo-text">
+                <i class="fas fa-tools"></i>
+                <span>SISOP</span>
+            </div>
+            <h1>Sistema de Controle de Operações</h1>
+        </div>
+
+        <div class="login-form-container">
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="matricula">Matrícula:</label>
+                    <input type="text" id="matricula" name="matricula" placeholder="Digite sua matrícula" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="senha">Senha:</label>
+                    <div class="password-field">
+                        <input type="password" id="senha" name="senha" placeholder="Digite sua senha" required>
+                        <button type="button" id="togglePassword" class="toggle-password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" id="btnLogin" class="btn-login">
+                        <i class="fas fa-sign-in-alt"></i> Entrar
+                    </button>
+                </div>
+
+                <div class="login-options">
+                    <a href="#" id="esqueciSenha">Esqueci minha senha</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="login-footer">
+            <p>&copy; 2025 Sistema de Controle de Operações. Todos os direitos reservados.</p>
+        </div>
+    </div>
+
+    <!-- Modal para adicionar auxiliar -->
+    <div id="auxiliarModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Adicionar Auxiliar</h3>
+                <button class="close-modal" id="fecharModalAuxiliar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Por favor, informe o nome do auxiliar que estará trabalhando com você:</p>
+                <div class="form-group">
+                    <label for="nomeAuxiliar">Nome do Auxiliar:</label>
+                    <input type="text" id="nomeAuxiliar" placeholder="Digite o nome do auxiliar">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" id="pularAdicao">Pular</button>
+                <button class="btn-continuar" id="confirmarAuxiliar">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/login.js"></script>
+</body>
+
+</html>

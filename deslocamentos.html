@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Deslocamentos</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+
+<body>
+    <!-- Menu Hamburger -->
+    <nav class="navbar">
+        <div class="hamburger">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="deslocamentos.html"><i class="fas fa-route"></i> Deslocamentos</a></li>
+            <li><a href="operacoes.html"><i class="fas fa-cogs"></i> Operações</a></li>
+            <li><a href="sobre.html"><i class="fas fa-info-circle"></i> Sobre</a></li>
+            <li><a href="contato.html"><i class="fas fa-envelope"></i> Contato</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <h1>Controle de Deslocamentos</h1>
+
+        <form id="deslocamentoForm">
+            <div class="form-group">
+                <label for="origem">Origem:</label>
+                <input type="text" id="origem" placeholder="Local de origem" required>
+            </div>
+
+            <div class="form-group">
+                <label for="destino">Destino:</label>
+                <input type="text" id="destino" placeholder="Local de destino" required>
+            </div>
+
+            <div class="form-group">
+                <label for="kmInicial">Quilometragem Inicial (km):</label>
+                <input type="number" id="kmInicial" placeholder="Km inicial" required>
+            </div>
+
+            <div class="form-group">
+                <label for="kmFinal">Quilometragem Final (km):</label>
+                <input type="number" id="kmFinal" placeholder="Km final">
+            </div>
+
+            <div class="form-actions">
+                <button type="button" id="iniciarDeslocamento">Iniciar Deslocamento</button>
+                <button type="button" id="finalizarDeslocamento" disabled>Finalizar Deslocamento</button>
+            </div>
+        </form>
+
+        <h2>Histórico de Deslocamentos</h2>
+        <div class="historico-container">
+            <ul id="historicoDeslocamentos"></ul>
+        </div>
+
+        <div class="botoes-acao">
+            <button type="button" id="gerarPDFDeslocamentos">Gerar PDF do Histórico</button>
+            <button type="button" id="limparHistoricoDeslocamentos" class="btn-limpar">Limpar Histórico</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Certifique-se de que api.js é importado antes de deslocamentos.js -->
+    <script src="js/api.js"></script>
+    <script src="js/comum.js"></script>
+    <script src="js/deslocamentos.js"></script>
+
+    <!-- Modal de compartilhamento -->
+    <div id="compartilharModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Compartilhar Deslocamento</h3>
+                <button class="close-modal" id="fecharModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <i class="fab fa-whatsapp whatsapp-icon"></i>
+                <p>Deseja compartilhar os detalhes deste deslocamento via WhatsApp?</p>
+                <p>Sua localização atual e os detalhes do trajeto serão enviados.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" id="continuar">Continuar sem compartilhar</button>
+                <button class="btn-share" id="confirmarCompartilhar">
+                    <i class="fab fa-whatsapp"></i> Compartilhar
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
+````
