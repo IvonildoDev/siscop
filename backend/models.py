@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
 import datetime
@@ -60,3 +60,15 @@ class Operacao(Base):
     # Timestamp de criação/atualização
     criado_em = Column(DateTime, default=datetime.datetime.utcnow)
     atualizado_em = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+class Usuario(Base):
+    __tablename__ = 'usuarios'
+    
+    id = Column(Integer, primary_key=True)
+    nome = Column(String(100), nullable=False)
+    matricula = Column(String(20), nullable=False, unique=True)
+    senha = Column(String(100), nullable=False)
+    auxiliar = Column(String(100))
+    
+    def __repr__(self):
+        return f"<Usuario(id={self.id}, nome='{self.nome}', matricula='{self.matricula}')>"

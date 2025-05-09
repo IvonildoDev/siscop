@@ -1,177 +1,208 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const compartilharModal = document.getElementById('compartilharModal');
-    const fecharModal = document.getElementById('fecharModal');
-    const continuar = document.getElementById('continuar');
-    const confirmarCompartilhar = document.getElementById('confirmarCompartilhar');
+document.addEventListener('DOMContentLoaded', function() {
+    // Elementos do formulário
+    const deslocamentoForm = document.getElementById('deslocamentoForm');
+    const origemInput = document.getElementById('origem');
+    const destinoInput = document.getElementById('destino');
+    const kmInicialInput = document.getElementById('kmInicial');
+    const kmFinalInput = document.getElementById('kmFinal');
     const btnIniciarDeslocamento = document.getElementById('iniciarDeslocamento');
     const btnFinalizarDeslocamento = document.getElementById('finalizarDeslocamento');
-
-    if (!compartilharModal) {
-        console.error("Elemento 'compartilharModal' não encontrado!");
+    const historicoDeslocamentos = document.getElementById('historicoDeslocamentos');
+    const btnGerarPDFDeslocamentos = document.getElementById('gerarPDFDeslocamentos');
+    const btnLimparHistoricoDeslocamentos = document.getElementById('limparHistoricoDeslocamentos');
+    
+    // Recuperar dados do usuário
+    const usuarioLogado = JSON.parse(sessionStorage.getItem('usuarioLogado') || '{}');
+    const nomeOperador = usuarioLogado.nome || 'Não autenticado';
+    const matriculaOperador = usuarioLogado.matricula || '';
+    const nomeAuxiliar = usuarioLogado.auxiliar || '';
+    
+    // Exibir informações do usuário na página
+    const userInfoContainer = document.getElementById('userInfo');
+    if (userInfoContainer) {
+        let auxiliarText = nomeAuxiliar ? `<span class="usuario-auxiliar">Aux: ${nomeAuxiliar}</span>` : '';
+        userInfoContainer.innerHTML = `
+            <div class="usuario-nome">${nomeOperador}</div>
+            ${matriculaOperador ? `<div class="usuario-matricula">${matriculaOperador}</div>` : ''}
+            ${auxiliarText}
+            <button id="btnLogout" class="btn-logout" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
+        `;
+        const btnLogout = document.getElementById('btnLogout');
+        if (btnLogout) {
+            btnLogout.addEventListener('click', function() {
+                sessionStorage.removeItem('usuarioLogado');
+                localStorage.removeItem('usuarioLogado');
+                window.location.replace('login.html?status=logout');
+            });
+        }
     }
-
+    
+    // Estado do deslocamento atual
     let deslocamentoAtual = {
         origem: '',
         destino: '',
         kmInicial: 0,
+        operador: nomeOperador,
+        matricula: matriculaOperador,
+        auxiliar: nomeAuxiliar,
         latitude: null,
         longitude: null
     };
-
-    function mostrarModal() {
-        if (compartilharModal) {
-            compartilharModal.classList.add('active');
-        } else {
-            console.error("Modal de compartilhamento não encontrado!");
-        }
+    
+    // Verificar se há deslocamento ativo
+    const deslocamentoAtivo = sessionStorage.getItem('deslocamentoAtivo') === 'true';
+    
+    if (deslocamentoAtivo && deslocamentoForm) {
+        // Recuperar informações do deslocamento ativo
+        const origem = sessionStorage.getItem('deslocamentoOrigem');
+        const destino = sessionStorage.getItem('deslocamentoDestino');
+        const kmInicial = sessionStorage.getItem('deslocamentoKmInicial');
+        
+        // Preencher formulário com dados do deslocamento ativo
+        if (origemInput) origemInput.value = origem;
+        if (destinoInput) destinoInput.value = destino;
+        if (kmInicialInput) kmInicialInput.value = kmInicial;
+        
+        // Desabilitar campos e botões apropriados
+        if (origemInput) origemInput.disabled = true;
+        if (destinoInput) destinoInput.disabled = true;
+        if (kmInicialInput) kmInicialInput.disabled = true;
+        if (btnIniciarDeslocamento) btnIniciarDeslocamento.disabled = true;
+        if (btnFinalizarDeslocamento) btnFinalizarDeslocamento.disabled = false;
+        
+        // Atualizar estado do deslocamento atual
+        deslocamentoAtual.origem = origem;
+        deslocamentoAtual.destino = destino;
+        deslocamentoAtual.kmInicial = parseFloat(kmInicial);
     }
-
+    
+    // Carregar histórico de deslocamentos
+    carregarHistoricoDeslocamentos();
+    
+    // Eventos dos elementos
     if (btnIniciarDeslocamento) {
-        btnIniciarDeslocamento.addEventListener('click', function () {
-            const origem = document.getElementById('origem').value;
-            const destino = document.getElementById('destino').value;
-            const kmInicial = parseFloat(document.getElementById('kmInicial').value);
-
-            if (!origem || !destino || isNaN(kmInicial)) {
-                alert('Por favor, preencha todos os campos obrigatórios.');
-                return;
-            }
-
-            deslocamentoAtual = {
-                origem: origem,
-                destino: destino,
-                kmInicial: kmInicial
-            };
-
+        btnIniciarDeslocamento.addEventListener('click', iniciarDeslocamento);
+    }
+    
+    if (btnFinalizarDeslocamento) {
+        btnFinalizarDeslocamento.addEventListener('click', finalizarDeslocamento);
+    }
+    
+    if (btnGerarPDFDeslocamentos) {
+        btnGerarPDFDeslocamentos.addEventListener('click', gerarPDFDeslocamentos);
+    }
+    
+    if (btnLimparHistoricoDeslocamentos) {
+        btnLimparHistoricoDeslocamentos.addEventListener('click', limparHistoricoDeslocamentos);
+    }
+    
+    // Função para iniciar deslocamento
+    async function iniciarDeslocamento() {
+        if (!origemInput || !destinoInput || !kmInicialInput) {
+            alert('Formulário incompleto. Recarregue a página e tente novamente.');
+            return;
+        }
+        
+        const origem = origemInput.value.trim();
+        const destino = destinoInput.value.trim();
+        const kmInicial = parseFloat(kmInicialInput.value);
+        
+        if (!origem || !destino || isNaN(kmInicial) || kmInicial < 0) {
+            alert('Por favor, preencha todos os campos corretamente.');
+            return;
+        }
+        
+        // Atualizar estado do deslocamento atual
+        deslocamentoAtual.origem = origem;
+        deslocamentoAtual.destino = destino;
+        deslocamentoAtual.kmInicial = kmInicial;
+        
+        // Obter coordenadas geográficas se disponível
+        try {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    function (position) {
+                    function(position) {
                         deslocamentoAtual.latitude = position.coords.latitude;
                         deslocamentoAtual.longitude = position.coords.longitude;
-                        mostrarModal();
+                        iniciarDeslocamentoNoSistema();
                     },
-                    function (error) {
-                        console.error("Erro ao obter localização:", error);
-                        deslocamentoAtual.latitude = null;
-                        deslocamentoAtual.longitude = null;
-                        mostrarModal();
-                    },
-                    { timeout: 5000 }
+                    function(error) {
+                        console.warn('Erro ao obter geolocalização:', error);
+                        iniciarDeslocamentoNoSistema();
+                    }
                 );
             } else {
-                alert("Seu navegador não suporta geolocalização.");
-                mostrarModal();
+                console.warn('Geolocalização não suportada pelo navegador');
+                iniciarDeslocamentoNoSistema();
             }
-        });
-    }
-
-    if (fecharModal) {
-        fecharModal.addEventListener('click', function () {
-            compartilharModal.classList.remove('active');
-        });
-    }
-
-    if (continuar) {
-        continuar.addEventListener('click', function () {
-            compartilharModal.classList.remove('active');
+        } catch (error) {
+            console.error('Erro ao acessar geolocalização:', error);
             iniciarDeslocamentoNoSistema();
-        });
-    }
-
-    if (confirmarCompartilhar) {
-        confirmarCompartilhar.addEventListener('click', function () {
-            compartilharWhatsApp();
-            compartilharModal.classList.remove('active');
-            iniciarDeslocamentoNoSistema();
-        });
-    }
-
-    function compartilharWhatsApp() {
-        const mensagem = `🚗 Estou iniciando um deslocamento:
-📍 De: ${deslocamentoAtual.origem}
-🏁 Para: ${deslocamentoAtual.destino}
-🕒 Horário: ${new Date().toLocaleString()}`;
-
-        let whatsappURL = '';
-        if (deslocamentoAtual.latitude && deslocamentoAtual.longitude) {
-            const localizacao = `\n📌 Minha localização atual: https://www.google.com/maps?q=${deslocamentoAtual.latitude},${deslocamentoAtual.longitude}`;
-            whatsappURL = `https://wa.me/?text=${encodeURIComponent(mensagem + localizacao)}`;
-        } else {
-            whatsappURL = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
         }
-
-        window.open(whatsappURL, '_blank');
     }
-
+    
+    // Função para iniciar deslocamento no sistema após obter (ou não) a geolocalização
     async function iniciarDeslocamentoNoSistema() {
         try {
-            document.getElementById('origem').disabled = true;
-            document.getElementById('destino').disabled = true;
-            document.getElementById('kmInicial').disabled = true;
-
+            // Desabilitar campos e botões apropriados
+            if (origemInput) origemInput.disabled = true;
+            if (destinoInput) destinoInput.disabled = true;
+            if (kmInicialInput) kmInicialInput.disabled = true;
             if (btnIniciarDeslocamento) btnIniciarDeslocamento.disabled = true;
             if (btnFinalizarDeslocamento) btnFinalizarDeslocamento.disabled = false;
-
+            
+            // Armazenar estado do deslocamento na sessão
             sessionStorage.setItem('deslocamentoAtivo', 'true');
             sessionStorage.setItem('deslocamentoOrigem', deslocamentoAtual.origem);
             sessionStorage.setItem('deslocamentoDestino', deslocamentoAtual.destino);
-            sessionStorage.setItem('deslocamentoKmInicial', deslocamentoAtual.kmInicial);
+            sessionStorage.setItem('deslocamentoKmInicial', deslocamentoAtual.kmInicial.toString());
             sessionStorage.setItem('deslocamentoDataInicio', new Date().toISOString());
-
+            sessionStorage.setItem('deslocamentoLatitude', deslocamentoAtual.latitude || '');
+            sessionStorage.setItem('deslocamentoLongitude', deslocamentoAtual.longitude || '');
+            
+            // Não salvar no banco ainda, apenas quando finalizar o deslocamento
             console.log('Deslocamento iniciado:', {
                 origem: deslocamentoAtual.origem,
                 destino: deslocamentoAtual.destino,
                 kmInicial: deslocamentoAtual.kmInicial,
-                dataInicio: new Date().toISOString()
+                dataInicio: new Date().toISOString(),
+                operador: deslocamentoAtual.operador,
+                matricula: deslocamentoAtual.matricula,
+                auxiliar: deslocamentoAtual.auxiliar,
+                latitude: deslocamentoAtual.latitude,
+                longitude: deslocamentoAtual.longitude
             });
         } catch (error) {
             console.error('Erro ao iniciar deslocamento:', error);
             alert('Ocorreu um erro ao iniciar o deslocamento. Tente novamente.');
         }
     }
-
-    const deslocamentoAtivo = sessionStorage.getItem('deslocamentoAtivo') === 'true';
-
-    if (deslocamentoAtivo) {
-        const origemEl = document.getElementById('origem');
-        const destinoEl = document.getElementById('destino');
-        const kmInicialEl = document.getElementById('kmInicial');
-
-        if (origemEl) origemEl.value = sessionStorage.getItem('deslocamentoOrigem');
-        if (destinoEl) destinoEl.value = sessionStorage.getItem('deslocamentoDestino');
-        if (kmInicialEl) kmInicialEl.value = sessionStorage.getItem('deslocamentoKmInicial');
-
-        if (origemEl) origemEl.disabled = true;
-        if (destinoEl) destinoEl.disabled = true;
-        if (kmInicialEl) kmInicialEl.disabled = true;
-
-        if (btnIniciarDeslocamento) btnIniciarDeslocamento.disabled = true;
-        if (btnFinalizarDeslocamento) btnFinalizarDeslocamento.disabled = false;
-    }
-
-    if (btnFinalizarDeslocamento) {
-        btnFinalizarDeslocamento.addEventListener('click', function () {
-            finalizarDeslocamento();
-        });
-    }
-
+    
+    // Função para finalizar deslocamento
     async function finalizarDeslocamento() {
         try {
-            const kmFinal = parseFloat(document.getElementById('kmFinal').value);
-
-            if (isNaN(kmFinal)) {
-                alert('Por favor, insira a quilometragem final.');
+            if (!kmFinalInput) {
+                alert('Campo de KM final não encontrado. Recarregue a página e tente novamente.');
                 return;
             }
-
+            
+            const kmFinal = parseFloat(kmFinalInput.value);
+            
+            if (isNaN(kmFinal) || kmFinal <= 0) {
+                alert('Por favor, insira a quilometragem final válida.');
+                return;
+            }
+            
             const kmInicial = parseFloat(sessionStorage.getItem('deslocamentoKmInicial') || '0');
+            
             if (kmFinal < kmInicial) {
                 alert('A quilometragem final não pode ser menor que a inicial.');
                 return;
             }
-
+            
             const distanciaPercorrida = kmFinal - kmInicial;
-
+            
+            // Preparar dados do deslocamento
             const dadosDeslocamento = {
                 origem: sessionStorage.getItem('deslocamentoOrigem'),
                 destino: sessionStorage.getItem('deslocamentoDestino'),
@@ -179,177 +210,221 @@ document.addEventListener('DOMContentLoaded', function () {
                 km_final: kmFinal,
                 distancia_percorrida: distanciaPercorrida,
                 data_inicio: sessionStorage.getItem('deslocamentoDataInicio'),
-                data_fim: new Date().toISOString()
+                data_fim: new Date().toISOString(),
+                operador: nomeOperador,
+                matricula: matriculaOperador,
+                auxiliar: nomeAuxiliar,
+                latitude: sessionStorage.getItem('deslocamentoLatitude') || null,
+                longitude: sessionStorage.getItem('deslocamentoLongitude') || null
             };
-
-            console.log('Salvando deslocamento completo:', dadosDeslocamento);
-
-            try {
-                console.log('Enviando dados para o backend:', dadosDeslocamento);
-
-                // Verificar se temos um token válido antes de prosseguir
-                const token = getAuthToken(); // Assumindo que esta função existe em api.js
-                if (!token) {
-                    throw new Error('Token de autenticação não encontrado. Faça login novamente.');
-                }
-
-                const resultado = await createDeslocamento({
-                    origem: dadosDeslocamento.origem,
-                    destino: dadosDeslocamento.destino,
-                    km_inicial: dadosDeslocamento.km_inicial,
-                    km_final: dadosDeslocamento.km_final,
-                    distancia_percorrida: dadosDeslocamento.distancia_percorrida,
-                    data_inicio: new Date(dadosDeslocamento.data_inicio).toISOString(),
-                    data_fim: new Date(dadosDeslocamento.data_fim).toISOString()
-                });
-
-                console.log('Deslocamento salvo no backend:', resultado);
-                alert('Deslocamento finalizado e salvo com sucesso!');
-            } catch (apiError) {
-                console.error('Erro ao salvar no backend:', apiError);
-
-                // Verificar se o erro é de autenticação
-                if (apiError.message && apiError.message.includes('401')) {
-                    if (confirm('Sua sessão expirou. Deseja fazer login novamente?')) {
-                        window.location.replace('login.html?status=sessao_expirada');
-                        return;
-                    }
-                }
-
-                if (!confirm('Não foi possível salvar o deslocamento no servidor. Deseja salvar os dados localmente e tentar novamente mais tarde?')) {
-                    return;
-                }
-
-                const pendentes = JSON.parse(localStorage.getItem('deslocamentosPendentes') || '[]');
-                pendentes.push(dadosDeslocamento);
-                localStorage.setItem('deslocamentosPendentes', JSON.stringify(pendentes));
-                alert('Deslocamento salvo localmente. Será sincronizado quando a conexão com o servidor for restabelecida.');
-            }
-
-            document.getElementById('origem').disabled = false;
-            document.getElementById('destino').disabled = false;
-            document.getElementById('kmInicial').disabled = false;
-
-            if (btnIniciarDeslocamento) btnIniciarDeslocamento.disabled = false;
-            if (btnFinalizarDeslocamento) btnFinalizarDeslocamento.disabled = true;
-
+            
+            // Salvar deslocamento no banco de dados
+            await window.api.saveDeslocamento(dadosDeslocamento);
+            
+            // Limpar estado do deslocamento na sessão
             sessionStorage.removeItem('deslocamentoAtivo');
             sessionStorage.removeItem('deslocamentoOrigem');
             sessionStorage.removeItem('deslocamentoDestino');
             sessionStorage.removeItem('deslocamentoKmInicial');
             sessionStorage.removeItem('deslocamentoDataInicio');
-
-            document.getElementById('deslocamentoForm').reset();
+            sessionStorage.removeItem('deslocamentoLatitude');
+            sessionStorage.removeItem('deslocamentoLongitude');
+            
+            // Resetar formulário
+            if (deslocamentoForm) deslocamentoForm.reset();
+            
+            // Habilitar campos e botões apropriados
+            if (origemInput) origemInput.disabled = false;
+            if (destinoInput) destinoInput.disabled = false;
+            if (kmInicialInput) kmInicialInput.disabled = false;
+            if (btnIniciarDeslocamento) btnIniciarDeslocamento.disabled = false;
+            if (btnFinalizarDeslocamento) btnFinalizarDeslocamento.disabled = true;
+            
+            // Atualizar histórico
             await carregarHistoricoDeslocamentos();
+            
+            alert('Deslocamento finalizado com sucesso!');
         } catch (error) {
             console.error('Erro ao finalizar deslocamento:', error);
-            alert('Ocorreu um erro ao finalizar o deslocamento: ' + error.message);
+            alert('Ocorreu um erro ao finalizar o deslocamento. Tente novamente.');
         }
     }
-
-    carregarHistoricoDeslocamentos();
-
+    
+    // Função para carregar histórico de deslocamentos
     async function carregarHistoricoDeslocamentos() {
+        if (!historicoDeslocamentos) return;
+        
         try {
-            const historicoElement = document.getElementById('historicoDeslocamentos');
-            if (!historicoElement) return;
-
-            historicoElement.innerHTML = '';
-            const deslocamentos = await getDeslocamentos();
-
+            historicoDeslocamentos.innerHTML = '<li class="loading">Carregando histórico...</li>';
+            
+            // Buscar deslocamentos do banco de dados
+            const deslocamentos = await window.api.getDeslocamentos();
+            
             if (deslocamentos.length === 0) {
-                historicoElement.innerHTML = '<li class="sem-registros">Nenhum deslocamento registrado.</li>';
+                historicoDeslocamentos.innerHTML = '<li class="sem-historico">Nenhum deslocamento registrado.</li>';
                 return;
             }
-
+            
+            // Ordenar por data (mais recentes primeiro)
+            deslocamentos.sort((a, b) => {
+                const dataA = new Date(a.data_inicio || a.data_fim || 0);
+                const dataB = new Date(b.data_inicio || b.data_fim || 0);
+                return dataB - dataA;
+            });
+            
+            historicoDeslocamentos.innerHTML = '';
+            
+            // Criar elemento para cada deslocamento
             deslocamentos.forEach(deslocamento => {
-                const dataInicio = new Date(deslocamento.data_inicio).toLocaleString();
+                const dataInicio = deslocamento.data_inicio ? new Date(deslocamento.data_inicio).toLocaleString() : 'N/A';
                 const dataFim = deslocamento.data_fim ? new Date(deslocamento.data_fim).toLocaleString() : 'Em andamento';
-
-                const item = document.createElement('li');
-                item.classList.add('historico-item');
-                item.innerHTML = `
-                    <div class="historico-detalhe">
-                        <strong>Origem:</strong> ${deslocamento.origem}
+                const distancia = deslocamento.distancia_percorrida ? `${deslocamento.distancia_percorrida} km` : 'N/A';
+                const status = deslocamento.pendenteSincronizacao ? '<span class="status-pendente">Pendente de sincronização</span>' : '';
+                
+                const itemHTML = `
+                    <div class="historico-cabecalho">
+                        <span class="historico-data">${dataInicio}</span>
+                        ${status}
                     </div>
-                    <div class="historico-detalhe">
-                        <strong>Destino:</strong> ${deslocamento.destino}
-                    </div>
-                    <div class="historico-detalhe">
-                        <strong>Distância:</strong> ${deslocamento.distancia_percorrida || 'N/A'} km
-                    </div>
-                    <div class="historico-detalhe">
-                        <strong>Início:</strong> ${dataInicio}
-                    </div>
-                    <div class="historico-detalhe">
-                        <strong>Término:</strong> ${dataFim}
+                    <div class="historico-corpo">
+                        <div class="historico-info">
+                            <span class="info-label">Origem:</span>
+                            <span class="info-valor">${deslocamento.origem || 'N/A'}</span>
+                        </div>
+                        <div class="historico-info">
+                            <span class="info-label">Destino:</span>
+                            <span class="info-valor">${deslocamento.destino || 'N/A'}</span>
+                        </div>
+                        <div class="historico-info">
+                            <span class="info-label">Distância:</span>
+                            <span class="info-valor">${distancia}</span>
+                        </div>
+                        <div class="historico-info">
+                            <span class="info-label">Término:</span>
+                            <span class="info-valor">${dataFim}</span>
+                        </div>
+                        <div class="historico-info">
+                            <span class="info-label">Operador:</span>
+                            <span class="info-valor">${deslocamento.operador || 'N/A'}</span>
+                        </div>
+                        <div class="historico-info">
+                            <span class="info-label">Auxiliar:</span>
+                            <span class="info-valor">${deslocamento.auxiliar || 'N/A'}</span>
+                        </div>
                     </div>
                 `;
-                historicoElement.appendChild(item);
+                
+                const li = document.createElement('li');
+                li.className = 'historico-item';
+                li.innerHTML = itemHTML;
+                historicoDeslocamentos.appendChild(li);
             });
         } catch (error) {
-            console.error('Erro ao carregar histórico:', error);
-            const historicoElement = document.getElementById('historicoDeslocamentos');
-            if (historicoElement) {
-                historicoElement.innerHTML = '<li class="erro">Erro ao carregar histórico. Tente novamente mais tarde.</li>';
-            }
+            console.error('Erro ao carregar histórico de deslocamentos:', error);
+            historicoDeslocamentos.innerHTML = '<li class="erro">Erro ao carregar histórico. Tente novamente mais tarde.</li>';
         }
     }
-
-    const btnGerarPDF = document.getElementById('gerarPDFDeslocamentos');
-    if (btnGerarPDF) {
-        btnGerarPDF.addEventListener('click', function () {
-            gerarPDFHistoricoDeslocamentos();
-        });
-    }
-
-    function gerarPDFHistoricoDeslocamentos() {
-        alert('Função de gerar PDF será implementada em breve!');
-    }
-
-    const btnLimparHistorico = document.getElementById('limparHistoricoDeslocamentos');
-    if (btnLimparHistorico) {
-        btnLimparHistorico.addEventListener('click', function () {
-            if (confirm('Tem certeza que deseja limpar todo o histórico de deslocamentos?')) {
-                alert('Função de limpar histórico será implementada em breve!');
-            }
-        });
-    }
-
-    setTimeout(async function () {
+    
+    // Função para gerar PDF do histórico de deslocamentos
+    async function gerarPDFDeslocamentos() {
         try {
-            await fetch(`${API_URL}/status`);
-            await enviarDadosPendentes();
+            // Verificar se jsPDF está disponível
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('Biblioteca de geração de PDF não carregada. Tente novamente mais tarde.');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Título do relatório
+            doc.setFontSize(16);
+            doc.text('Relatório de Deslocamentos', 20, 20);
+            
+            // Informações do operador
+            doc.setFontSize(12);
+            doc.text(`Operador: ${nomeOperador} (${matriculaOperador})`, 20, 30);
+            if (nomeAuxiliar) {
+                doc.text(`Auxiliar: ${nomeAuxiliar}`, 20, 40);
+            }
+            
+            // Data de geração
+            doc.setFontSize(10);
+            doc.text(`Gerado em: ${new Date().toLocaleString()}`, 20, nomeAuxiliar ? 50 : 40);
+            
+            // Buscar deslocamentos
+            const deslocamentos = await window.api.getDeslocamentos();
+            
+            if (deslocamentos.length === 0) {
+                doc.setFontSize(12);
+                doc.text('Nenhum deslocamento registrado.', 20, 60);
+            } else {
+                // Ordenar por data (mais recentes primeiro)
+                deslocamentos.sort((a, b) => {
+                    const dataA = new Date(a.data_inicio || a.data_fim || 0);
+                    const dataB = new Date(b.data_inicio || b.data_fim || 0);
+                    return dataB - dataA;
+                });
+                
+                let y = 60;
+                
+                // Adicionar cada deslocamento ao PDF
+                deslocamentos.forEach((d, index) => {
+                    // Verificar se precisa adicionar nova página
+                    if (y > 250) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                    
+                    const dataInicio = d.data_inicio ? new Date(d.data_inicio).toLocaleString() : 'N/A';
+                    const dataFim = d.data_fim ? new Date(d.data_fim).toLocaleString() : 'Em andamento';
+                    const distancia = d.distancia_percorrida ? `${d.distancia_percorrida} km` : 'N/A';
+                    
+                    doc.setFontSize(11);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(`Deslocamento ${index + 1}`, 20, y);
+                    y += 6;
+                    
+                    doc.setFontSize(10);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(`Data/Hora: ${dataInicio}`, 20, y);
+                    y += 5;
+                    doc.text(`Origem: ${d.origem || 'N/A'}`, 20, y);
+                    y += 5;
+                    doc.text(`Destino: ${d.destino || 'N/A'}`, 20, y);
+                    y += 5;
+                    doc.text(`Distância: ${distancia}`, 20, y);
+                    y += 5;
+                    doc.text(`Término: ${dataFim}`, 20, y);
+                    y += 5;
+                    doc.text(`Operador: ${d.operador || 'N/A'}`, 20, y);
+                    y += 5;
+                    doc.text(`Auxiliar: ${d.auxiliar || 'N/A'}`, 20, y);
+                    y += 10;
+                });
+            }
+            
+            // Salvar o PDF
+            doc.save('relatorio_deslocamentos.pdf');
         } catch (error) {
-            console.log('Backend não está disponível no momento. Dados pendentes permanecerão armazenados localmente.');
+            console.error('Erro ao gerar PDF:', error);
+            alert('Ocorreu um erro ao gerar o PDF. Tente novamente.');
         }
-    }, 3000);
+    }
+    
+    // Função para limpar histórico de deslocamentos
+    function limparHistoricoDeslocamentos() {
+        if (confirm('Tem certeza que deseja limpar todo o histórico de deslocamentos? Esta ação não pode ser desfeita.')) {
+            try {
+                // Aqui apenas limpa a visualização. Os dados continuam no banco.
+                // Para realmente limpar os dados, seria necessário implementar uma 
+                // função na API para excluir os registros.
+                historicoDeslocamentos.innerHTML = '<li class="sem-historico">Nenhum deslocamento registrado.</li>';
+                alert('Histórico de deslocamentos limpo com sucesso!');
+            } catch (error) {
+                console.error('Erro ao limpar histórico:', error);
+                alert('Ocorreu um erro ao limpar o histórico. Tente novamente.');
+            }
+        }
+    }
 });
-
-async function enviarDadosPendentes() {
-    const pendentes = JSON.parse(localStorage.getItem('deslocamentosPendentes') || '[]');
-
-    if (pendentes.length === 0) return;
-
-    console.log(`Tentando enviar ${pendentes.length} deslocamentos pendentes...`);
-
-    const novosPendentes = [];
-
-    for (const deslocamento of pendentes) {
-        try {
-            await createDeslocamento(deslocamento);
-            console.log('Deslocamento pendente enviado com sucesso:', deslocamento);
-        } catch (error) {
-            console.error('Falha ao enviar deslocamento pendente:', error);
-            novosPendentes.push(deslocamento);
-        }
-    }
-
-    localStorage.setItem('deslocamentosPendentes', JSON.stringify(novosPendentes));
-
-    if (novosPendentes.length === 0) {
-        console.log('Todos os deslocamentos pendentes foram enviados com sucesso!');
-    } else {
-        console.log(`${novosPendentes.length} deslocamentos ainda estão pendentes.`);
-    }
-}

@@ -33,13 +33,22 @@ def token_required(f):
         if not token:
             return jsonify({'mensagem': 'Token é necessário!'}), 401
         try:
-            token = token.replace('Bearer ', '')
+            # Se o token vier com "Bearer ", remover essa parte
+            if token.startswith('Bearer '):
+                token = token.replace('Bearer ', '')
+                
+            # Decodificar o token
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            request.user = data['matricula']
+            
+            # Adicionar informações do usuário no objeto request
+            request.user = data
         except jwt.ExpiredSignatureError:
             return jsonify({'mensagem': 'Token expirado!'}), 401
         except jwt.InvalidTokenError:
             return jsonify({'mensagem': 'Token inválido!'}), 401
+        except Exception as e:
+            return jsonify({'mensagem': f'Erro na autenticação: {str(e)}'}), 401
+            
         return f(*args, **kwargs)
     decorator.__name__ = f.__name__
     return decorator
@@ -72,26 +81,44 @@ def status():
 # Rota para login
 @app.route('/login', methods=['POST'])
 def login():
-    dados = request.get_json()
+    data = request.json
+    matricula = data.get('matricula')
+    senha = data.get('senha')
     
-    if not dados or not dados.get('matricula') or not dados.get('senha'):
-        return jsonify({'mensagem': 'Credenciais incompletas!'}), 400
+    # Validar usuário e senha
+    if not matricula or not senha:
+        return jsonify({'mensagem': 'Matrícula e senha são obrigatórios!'}), 400
     
-    # Simulação de verificação no banco (substitua por consulta real ao banco de dados)
-    if dados.get('matricula') == '12345' and dados.get('senha') == 'senha123':
-        # Gerar token JWT
-        token = jwt.encode({
-            'matricula': dados.get('matricula'),
+    # Usar sessão do banco de dados
+    db_session = next(get_db())
+    
+    # Buscar usuário no banco de dados
+    usuario = db_session.query(models.Usuario).filter_by(matricula=matricula).first()
+    
+    # Se usuário não existir ou senha estiver incorreta
+    if not usuario or usuario.senha != senha:  # Em produção, use uma verificação segura de senha
+        return jsonify({'mensagem': 'Matrícula ou senha incorretos!'}), 401
+    
+    # Se autenticação bem sucedida, gerar token JWT
+    token = jwt.encode(
+        {
+            'sub': str(usuario.id),
+            'nome': usuario.nome,
+            'matricula': usuario.matricula,
             'exp': datetime.utcnow() + timedelta(hours=24)
-        }, SECRET_KEY, algorithm="HS256")
-        
-        return jsonify({
-            'token': token,
-            'nome': 'Operador de Teste',
-            'matricula': dados.get('matricula')
-        })
+        },
+        SECRET_KEY,
+        algorithm='HS256'
+    )
     
-    return jsonify({'mensagem': 'Matrícula ou senha incorretos!'}), 401
+    # Dados a retornar para o cliente
+    return jsonify({
+        'token': token,
+        'id': usuario.id,
+        'nome': usuario.nome,
+        'matricula': usuario.matricula,
+        'auxiliar': usuario.auxiliar if hasattr(usuario, 'auxiliar') else ''
+    })
 
 # Rota para obter e criar deslocamentos
 @app.route('/deslocamentos', methods=['GET', 'POST'])
@@ -144,6 +171,55 @@ def handle_deslocamentos():
             'mensagem': 'Deslocamento criado com sucesso!'
         }), 201
 
+# Adicione esta rota para criar usuários
+@app.route('/usuarios', methods=['POST'])
+def criar_usuario():
+    data = request.json
+    
+    # Validar campos obrigatórios
+    if not all(field in data for field in ['nome', 'matricula', 'senha']):
+        return jsonify({'mensagem': 'Campos obrigatórios ausentes!'}), 400
+    
+    db_session = next(get_db())
+    
+    # Verificar se usuário já existe
+    usuario_existente = db_session.query(models.Usuario).filter_by(matricula=data['matricula']).first()
+    if usuario_existente:
+        return jsonify({'mensagem': 'Usuário com esta matrícula já existe!'}), 409
+    
+    # Criar novo usuário
+    novo_usuario = models.Usuario(
+        nome=data['nome'],
+        matricula=data['matricula'],
+        senha=data['senha'],  # Em produção, aplique hash na senha
+        auxiliar=data.get('auxiliar', '')
+    )
+    
+    db_session.add(novo_usuario)
+    db_session.commit()
+    
+    return jsonify({
+        'id': novo_usuario.id,
+        'nome': novo_usuario.nome,
+        'matricula': novo_usuario.matricula,
+        'mensagem': 'Usuário criado com sucesso!'
+    }), 201
+
 # Iniciar o servidor quando este arquivo for executado diretamente
 if __name__ == '__main__':
+    # Criar usuário padrão para testes se não existir
+    with app.app_context():
+        db_session = next(get_db())
+        usuario_existente = db_session.query(models.Usuario).filter_by(matricula='admin').first()
+        if not usuario_existente:
+            novo_usuario = models.Usuario(
+                nome='Administrador',
+                matricula='admin',
+                senha='admin',
+                auxiliar='Auxiliar Admin'
+            )
+            db_session.add(novo_usuario)
+            db_session.commit()
+            print("Usuário padrão criado: matricula 'admin', senha 'admin'")
+    
     app.run(debug=True, host='0.0.0.0', port=8000)

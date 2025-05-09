@@ -57,16 +57,30 @@ h1 {
     padding: 0 15px;
     color: white;
     position: relative;
+    min-width: 120px;
 }
 
 .usuario-nome {
     font-weight: bold;
     font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
 }
 
-.usuario-matricula, .usuario-auxiliar {
+.usuario-matricula {
     font-size: 12px;
     opacity: 0.8;
+}
+
+.usuario-auxiliar {
+    font-size: 12px;
+    opacity: 0.8;
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .btn-logout {
@@ -94,6 +108,11 @@ h1 {
         top: 15px;
         right: 60px;
         padding: 0;
+        max-width: 120px;
+    }
+    
+    .usuario-nome, .usuario-auxiliar {
+        max-width: 120px;
     }
     
     .btn-logout {
@@ -1113,5 +1132,482 @@ p {
     
     .login-header h1 {
         font-size: 1.2rem;
+    }
+}
+
+/* Estilos para a página de relatórios */
+
+.report-filters {
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 5px;
+    margin-bottom: 25px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+}
+
+.filter-group label {
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.filter-group select,
+.filter-group input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.period-dates {
+    display: flex;
+    gap: 15px;
+}
+
+.btn-primary {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: #45a049;
+}
+
+/* Estilos do relatório */
+.report-container {
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.report-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.report-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-action {
+    background-color: #f0f0f0;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.btn-action:hover {
+    background-color: #e0e0e0;
+}
+
+.report-content {
+    padding: 20px;
+}
+
+.report-section {
+    margin-bottom: 25px;
+}
+
+.report-section h3 {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.operator-info,
+.assistant-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+}
+
+.info-item {
+    margin-bottom: 10px;
+}
+
+.info-label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 3px;
+    color: #555;
+}
+
+.info-value {
+    color: #333;
+}
+
+/* Tabela de dados */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.data-table th {
+    background-color: #f5f5f5;
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 2px solid #ddd;
+    font-weight: 600;
+}
+
+.data-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.data-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* Resumo */
+.summary-data {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.summary-label {
+    font-size: 14px;
+    color: #555;
+}
+
+.summary-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Mensagem de sem dados */
+.no-data-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.no-data-message i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    color: #ddd;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .filter-group {
+        width: 100%;
+    }
+    
+    .period-dates {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .report-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .data-table {
+        overflow-x: auto;
+        display: block;
+    }
+}
+
+/* Estilos para impressão e PDF */
+@media print {
+    body {
+        background: white;
+    }
+    
+    .navbar, 
+    .report-filters,
+    .report-actions {
+        display: none;
+    }
+    
+    .container {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .report-container {
+        box-shadow: none;
+    }
+}
+
+/* Estilos para a página de relatórios */
+.relatorio-filtros {
+    margin-bottom: 25px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.filtro-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.relatorio-resultado {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 25px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.relatorio-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.relatorio-header h2 {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    color: #333;
+}
+
+.operator-info,
+.assistant-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.info-item {
+    margin-bottom: 10px;
+}
+
+.info-label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 3px;
+    color: #555;
+}
+
+.info-value {
+    color: #333;
+}
+
+.relatorio-acoes {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.btn-action {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.btn-action:hover {
+    background-color: #45a049;
+}
+
+.relatorio-resumo {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.relatorio-resumo h3 {
+    margin-bottom: 15px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.resumo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 15px;
+}
+
+.resumo-item {
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.resumo-valor {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.resumo-label {
+    font-size: 14px;
+    color: #777;
+}
+
+.relatorio-secao {
+    margin-bottom: 30px;
+}
+
+.relatorio-secao h3 {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th {
+    background-color: #f5f5f5;
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 2px solid #ddd;
+    font-weight: 600;
+}
+
+.data-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.data-table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.operacao-card {
+    background-color: #fff;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.operacao-card-header {
+    padding: 15px;
+    background-color: #f5f5f5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.operacao-card-header h4 {
+    margin: 0;
+    color: #333;
+}
+
+.operacao-data {
+    font-size: 14px;
+    color: #777;
+}
+
+.operacao-card-body {
+    padding: 15px;
+}
+
+.operacao-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.operacao-info-item {
+    margin-bottom: 5px;
+}
+
+.operacao-observacoes {
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+}
+
+.sem-dados {
+    text-align: center;
+    padding: 40px;
+    color: #777;
+}
+
+.sem-dados i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    color: #ddd;
+}
+
+@media (max-width: 768px) {
+    .filtro-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .relatorio-acoes {
+        flex-direction: column;
+    }
+    
+    .resumo-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .operacao-info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .data-table {
+        display: block;
+        overflow-x: auto;
     }
 }

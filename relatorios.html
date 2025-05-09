@@ -1,0 +1,145 @@
+relatorios.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios - Sistema de Controle de Operações</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+
+<body>
+    <!-- Menu Hamburger -->
+    <nav class="navbar">
+        <div class="hamburger">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="deslocamentos.html"><i class="fas fa-route"></i> Deslocamentos</a></li>
+            <li><a href="operacoes.html"><i class="fas fa-cogs"></i> Operações</a></li>
+            <li><a href="relatorios.html"><i class="fas fa-chart-bar"></i> Relatórios</a></li>
+            <li><a href="sobre.html"><i class="fas fa-info-circle"></i> Sobre</a></li>
+            <li><a href="contato.html"><i class="fas fa-envelope"></i> Contato</a></li>
+        </ul>
+        <div id="userInfo" class="user-info-container"></div>
+    </nav>
+
+    <div class="container">
+        <h1>Relatórios</h1>
+
+        <div class="card-container relatorio-filtros">
+            <h2>Filtros do Relatório</h2>
+            <form id="relatorioForm">
+                <div class="filtro-grid">
+                    <div class="form-group">
+                        <label for="tipoRelatorio">Tipo de Relatório:</label>
+                        <select id="tipoRelatorio" required>
+                            <option value="deslocamentos">Deslocamentos</option>
+                            <option value="operacoes">Operações</option>
+                            <option value="completo">Relatório Completo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dataInicio">Data Início:</label>
+                        <input type="date" id="dataInicio" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dataFim">Data Fim:</label>
+                        <input type="date" id="dataFim" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="gerarRelatorio"><i class="fas fa-search"></i> Gerar Relatório</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="relatorioResultado" class="relatorio-resultado" style="display: none;">
+            <div class="relatorio-header">
+                <h2 id="relatorioTitulo">Relatório de Atividades</h2>
+                <div class="periodo">
+                    <strong>Período:</strong> <span id="relatorioPeriodo"></span>
+                </div>
+                <div class="operador-info">
+                    <div class="info-item">
+                        <span class="info-label">Operador:</span>
+                        <span id="relatorioOperador" class="info-value">Nome do Operador</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Matrícula:</span>
+                        <span id="relatorioMatricula" class="info-value">123456</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Auxiliar:</span>
+                        <span id="relatorioAuxiliar" class="info-value">Nome do Auxiliar</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="relatorio-acoes">
+                <button type="button" id="gerarPDF" class="btn-action">
+                    <i class="fas fa-file-pdf"></i> Gerar PDF
+                </button>
+                <button type="button" id="compartilharRelatorio" class="btn-action">
+                    <i class="fas fa-share-alt"></i> Compartilhar
+                </button>
+            </div>
+
+            <div id="relatorioResumo" class="relatorio-resumo">
+                <h3><i class="fas fa-chart-pie"></i> Resumo</h3>
+                <div class="resumo-grid">
+                    <div class="resumo-item">
+                        <div class="resumo-valor" id="totalDeslocamentos">0</div>
+                        <div class="resumo-label">Deslocamentos</div>
+                    </div>
+                    <div class="resumo-item">
+                        <div class="resumo-valor" id="totalKm">0</div>
+                        <div class="resumo-label">Km Percorridos</div>
+                    </div>
+                    <div class="resumo-item">
+                        <div class="resumo-valor" id="totalOperacoes">0</div>
+                        <div class="resumo-label">Operações</div>
+                    </div>
+                    <div class="resumo-item">
+                        <div class="resumo-valor" id="totalMobilizacao">00:00</div>
+                        <div class="resumo-label">Tempo Mobilização</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção de Deslocamentos -->
+            <div id="secaoDeslocamentos" class="relatorio-secao">
+                <h3><i class="fas fa-route"></i> Deslocamentos</h3>
+                <div id="deslocamentosContainer" class="relatorio-dados">
+                    <!-- Deslocamentos serão inseridos aqui -->
+                </div>
+            </div>
+
+            <!-- Seção de Operações -->
+            <div id="secaoOperacoes" class="relatorio-secao">
+                <h3><i class="fas fa-cogs"></i> Operações</h3>
+                <div id="operacoesContainer" class="relatorio-dados">
+                    <!-- Operações serão inseridas aqui -->
+                </div>
+            </div>
+
+            <!-- Mensagem quando não há dados -->
+            <div id="semDados" class="sem-dados" style="display: none;">
+                <i class="fas fa-exclamation-circle"></i>
+                <p>Nenhum registro encontrado para o período selecionado.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/comum.js"></script>
+    <script src="js/relatorios.js"></script>
+</body>
+
+</html>

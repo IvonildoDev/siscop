@@ -1,4 +1,33 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // Recuperar dados do usuário das cookies ou sessionStorage
+    function obterDadosUsuario() {
+        // Tentar obter do sessionStorage primeiro
+        let usuarioLogado = JSON.parse(sessionStorage.getItem('usuarioLogado') || '{}');
+        
+        // Se não encontrar no sessionStorage, tentar no localStorage
+        if (!usuarioLogado.nome) {
+            usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+        }
+        
+        return {
+            nome: usuarioLogado.nome || 'Não autenticado',
+            matricula: usuarioLogado.matricula || '',
+            auxiliar: usuarioLogado.auxiliar || ''
+        };
+    }
+
+    // Exibir dados do usuário na interface, se necessário
+    const dadosUsuario = obterDadosUsuario();
+    const nomeUsuarioEl = document.getElementById('nomeUsuarioLogado');
+    if (nomeUsuarioEl) {
+        nomeUsuarioEl.textContent = dadosUsuario.nome;
+    }
+    
+    const auxiliarInfoEl = document.getElementById('auxiliarInfo');
+    if (auxiliarInfoEl) {
+        auxiliarInfoEl.textContent = dadosUsuario.auxiliar || 'Não informado';
+    }
+
     // Elementos da interface
     const btnIniciarMobilizacao = document.getElementById('iniciarMobilizacao');
     const btnFinalizarMobilizacao = document.getElementById('finalizarMobilizacao');
@@ -9,14 +38,29 @@ document.addEventListener('DOMContentLoaded', function () {
     const operacaoForm = document.getElementById('operacaoForm');
 
     // Exibir informações do usuário logado
-    const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
-    const nomeUsuarioEl = document.getElementById('nomeUsuarioLogado');
+    const usuarioLogado = JSON.parse(sessionStorage.getItem('usuarioLogado') || '{}');
+    const nomeOperador = usuarioLogado.nome || 'Sistema';
+    const matriculaOperador = usuarioLogado.matricula || '';
+    const nomeAuxiliar = usuarioLogado.auxiliar || '';
 
-    if (nomeUsuarioEl) {
-        if (usuarioLogado.nome) {
-            nomeUsuarioEl.textContent = usuarioLogado.nome;
-        } else {
-            nomeUsuarioEl.textContent = 'Sistema (não autenticado)';
+    // Preencher nome do operador automaticamente
+    const nomeOperadorEl = document.getElementById('nomeOperador');
+    if (nomeOperadorEl && nomeOperador) {
+        nomeOperadorEl.value = nomeOperador;
+    }
+
+    // Adicionar informação do auxiliar também
+    if (!auxiliarInfoEl) {
+        // Se não existir, criar um novo elemento para mostrar o auxiliar
+        const usuarioInfoEl = document.querySelector('.usuario-info');
+        if (usuarioInfoEl) {
+            const auxiliarDiv = document.createElement('div');
+            auxiliarDiv.className = 'auxiliar-info';
+            auxiliarDiv.innerHTML = `
+                <i class="fas fa-user-friends"></i>
+                <span>Auxiliar: <strong id="auxiliarInfo">${nomeAuxiliar || 'Não informado'}</strong></span>
+            `;
+            usuarioInfoEl.appendChild(auxiliarDiv);
         }
     }
 
@@ -141,6 +185,18 @@ document.addEventListener('DOMContentLoaded', function () {
         formInputs.forEach(input => {
             input.disabled = false;
         });
+
+        // Definir o horário de início da operação para o momento atual
+        const agora = new Date();
+
+        // Definir a data atual no formato YYYY-MM-DD para o campo de data
+        const dataAtual = agora.toISOString().split('T')[0];
+        document.getElementById('dataOperacao').value = dataAtual;
+
+        // Definir o horário atual no formato HH:MM para o campo de início
+        const horas = agora.getHours().toString().padStart(2, '0');
+        const minutos = agora.getMinutes().toString().padStart(2, '0');
+        document.getElementById('inicioOperacao').value = `${horas}:${minutos}`;
     }
 
     /**
@@ -148,19 +204,50 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     async function carregarDeslocamentos() {
         try {
-            const deslocamentos = await getDeslocamentos();
+            // Buscar deslocamentos do localStorage
+            const deslocamentosString = localStorage.getItem('deslocamentos');
+
+            if (!deslocamentosString) {
+                console.warn('Nenhum deslocamento encontrado no localStorage');
+                deslocamentoSelect.innerHTML = '<option value="">Nenhum deslocamento disponível</option>';
+                return;
+            }
+
+            // Converter para objeto
+            const deslocamentos = JSON.parse(deslocamentosString);
 
             if (deslocamentos && deslocamentos.length > 0) {
+                // Limpar opções existentes
                 deslocamentoSelect.innerHTML = '<option value="">Selecione um deslocamento</option>';
 
-                deslocamentos.forEach(deslocamento => {
+                // Filtrar deslocamentos do usuário atual (se necessário)
+                const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+                const userId = userData.id;
+
+                // Mostrar deslocamentos em ordem cronológica inversa (mais recentes primeiro)
+                const deslocamentosOrdenados = deslocamentos
+                    .filter(desl => !userId || desl.userId === userId)
+                    .sort((a, b) => new Date(b.data) - new Date(a.data));
+
+                deslocamentosOrdenados.forEach(deslocamento => {
                     const option = document.createElement('option');
-                    option.value = deslocamento.id;
-                    option.textContent = `${deslocamento.origem} → ${deslocamento.destino}`;
+                    option.value = deslocamento.id || '';
+
+                    // Formatar a data para exibição
+                    let dataFormatada = '';
+                    if (deslocamento.data) {
+                        const data = new Date(deslocamento.data);
+                        dataFormatada = data.toLocaleDateString('pt-BR');
+                    }
+
+                    option.textContent = `${dataFormatada} - ${deslocamento.origem || ''} → ${deslocamento.destino || ''}`;
                     deslocamentoSelect.appendChild(option);
                 });
+
+                console.log('Deslocamentos carregados:', deslocamentosOrdenados);
             } else {
                 deslocamentoSelect.innerHTML = '<option value="">Nenhum deslocamento disponível</option>';
+                console.log('Nenhum deslocamento encontrado');
             }
         } catch (error) {
             console.error('Erro ao carregar deslocamentos:', error);
@@ -173,68 +260,105 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     async function salvarOperacao() {
         try {
-            // Obter todos os valores dos campos
-            const dadosOperacao = {
-                deslocamento_id: deslocamentoSelect.value || null,
-                inicio_operacao: inicioOperacaoInput.value,
-                tipo_operacao: document.getElementById('tipoOperacao').value,
-                nome_poco_serv: document.getElementById('nomePocoServ').value,
-                nome_operador: document.getElementById('nomeOperador').value,
-                volume_bbl: parseFloat(document.getElementById('volumeBbl').value),
-                temperatura: parseFloat(document.getElementById('temperatura').value),
-                pressao: parseFloat(document.getElementById('pressao').value),
-                descricao_atividades: document.getElementById('descricaoAtividades').value,
+            // Log dos elementos do formulário para depuração
+            console.log("Verificando todos os elementos do formulário:");
+            document.querySelectorAll('#operacaoForm input, #operacaoForm select, #operacaoForm textarea').forEach(el => {
+                console.log(`Elemento: ${el.id || 'sem ID'}, Tipo: ${el.type}, Valor: ${el.value || 'vazio'}`);
+            });
 
-                // Adicionar informações da mobilização
-                mobilizacao_inicio: mobilizacaoData.inicio,
-                mobilizacao_fim: mobilizacaoData.fim,
-                mobilizacao_status_inicio: mobilizacaoData.status_inicio,
-                mobilizacao_status_fim: mobilizacaoData.status_fim
+            // Obter elementos do formulário
+            const tipoOperacaoEl = document.getElementById('tipoOperacao');
+            const deslocamentoSelectEl = document.getElementById('deslocamentoSelect');
+            const inicioOperacaoEl = document.getElementById('inicioOperacao');
+            const nomePocoServEl = document.getElementById('nomePocoServ');
+            const nomeOperadorEl = document.getElementById('nomeOperador');
+            const volumeBblEl = document.getElementById('volumeBbl');
+            const temperaturaEl = document.getElementById('temperatura');
+            const pressaoEl = document.getElementById('pressao');
+            const descricaoAtividadesEl = document.getElementById('descricaoAtividades');
+
+            // Verificar se os elementos essenciais existem
+            const elementosFaltantes = [];
+            if (!tipoOperacaoEl) elementosFaltantes.push('tipoOperacao');
+            if (!inicioOperacaoEl) elementosFaltantes.push('inicioOperacao');
+            if (!nomePocoServEl) elementosFaltantes.push('nomePocoServ');
+
+            if (elementosFaltantes.length > 0) {
+                console.error('Elementos essenciais faltantes no formulário:', elementosFaltantes);
+                alert(`Os elementos ${elementosFaltantes.join(', ')} não foram encontrados. Verifique seu HTML.`);
+                return;
+            }
+
+            // Extrair data e hora do campo inicioOperacao (que é do tipo datetime-local)
+            let data = '', horaInicio = '';
+            if (inicioOperacaoEl.value) {
+                const dataHora = new Date(inicioOperacaoEl.value);
+                data = dataHora.toISOString().split('T')[0]; // YYYY-MM-DD
+                horaInicio = dataHora.toTimeString().slice(0, 5); // HH:MM
+            }
+
+            // Coletar dados do formulário adaptados à estrutura real do formulário
+            const operacao = {
+                tipo: tipoOperacaoEl.value,
+                deslocamentoId: deslocamentoSelectEl ? deslocamentoSelectEl.value : '',
+                local: nomePocoServEl.value, // Usando nomePocoServ como localOperacao
+                data: data, // Extraído do inicioOperacao
+                horaInicio: horaInicio, // Extraído do inicioOperacao
+                horaFim: '', // Não parece ter esse campo no formulário
+                observacoes: descricaoAtividadesEl ? descricaoAtividadesEl.value : '',
+                latitude: document.getElementById('latitude') ? document.getElementById('latitude').textContent || null : null,
+                longitude: document.getElementById('longitude') ? document.getElementById('longitude').textContent || null : null,
+                // Campos específicos do seu formulário
+                nomeOperador: nomeOperadorEl ? nomeOperadorEl.value : nomeOperador,
+                nomeAuxiliar: nomeAuxiliar || '',
+                volumeBbl: volumeBblEl ? volumeBblEl.value : '',
+                temperatura: temperaturaEl ? temperaturaEl.value : '',
+                pressao: pressaoEl ? pressaoEl.value : '',
+                // Timestamp de criação
+                criadoEm: new Date().toISOString()
             };
 
-            // Obter informações do operador logado
-            const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            console.log("Objeto operacao criado:", operacao);
 
-            // Adicionar informações do operador e auxiliar
-            if (usuarioLogado.nome) {
-                dadosOperacao.nome_operador = usuarioLogado.nome;
-                dadosOperacao.matricula_operador = usuarioLogado.matricula;
+            // Verificar se os campos obrigatórios foram preenchidos
+            if (!operacao.tipo || !operacao.local || !operacao.data || !operacao.horaInicio) {
+                alert('Por favor, preencha todos os campos obrigatórios.');
+                return;
             }
 
-            if (usuarioLogado.auxiliar) {
-                dadosOperacao.nome_auxiliar = usuarioLogado.auxiliar;
+            // Adicionar userId da sessão atual
+            operacao.userId = usuarioLogado.id || null;
+            operacao.userName = nomeOperador;
+            operacao.userMatricula = matriculaOperador;
+            operacao.auxiliarName = nomeAuxiliar;
+
+            // Adicionar informações do deslocamento associado (se selecionado)
+            if (operacao.deslocamentoId) {
+                const deslocamentos = JSON.parse(localStorage.getItem('deslocamentos') || '[]');
+                const deslocamentoSelecionado = deslocamentos.find(d => d.id == operacao.deslocamentoId);
+
+                if (deslocamentoSelecionado) {
+                    operacao.deslocamentoOrigem = deslocamentoSelecionado.origem;
+                    operacao.deslocamentoDestino = deslocamentoSelecionado.destino;
+                    operacao.deslocamentoData = deslocamentoSelecionado.data;
+                }
             }
 
-            // Verificar localização se estiver disponível
-            const latitudeEl = document.getElementById('latitude');
-            const longitudeEl = document.getElementById('longitude');
+            // Salvar no banco de dados
+            const operacaoSalva = await createOperacao(operacao);
 
-            if (latitudeEl && longitudeEl &&
-                latitudeEl.textContent && longitudeEl.textContent) {
-                dadosOperacao.latitude = parseFloat(latitudeEl.textContent);
-                dadosOperacao.longitude = parseFloat(longitudeEl.textContent);
-            }
+            console.log('Operação salva com sucesso:', operacaoSalva);
 
-            console.log('Enviando dados da operação:', dadosOperacao);
-
-            // Enviar para o backend
-            const resultado = await createOperacao(dadosOperacao);
-
-            console.log('Operação salva com sucesso:', resultado);
-            alert('Operação salva com sucesso!');
-
-            // Resetar formulário
-            operacaoForm.reset();
-
-            // Resetar status de mobilização
+            // Atualizar UI ou fazer outras ações necessárias
+            alert('Operação registrada com sucesso!');
             resetarMobilizacao();
+            await carregarHistoricoOperacoes();
 
-            // Atualizar histórico
-            carregarHistoricoOperacoes();
-
+            return operacaoSalva;
         } catch (error) {
             console.error('Erro ao salvar operação:', error);
-            alert('Erro ao salvar operação. Verifique os dados e tente novamente.');
+            alert('Erro ao salvar a operação: ' + (error.message || 'Tente novamente.'));
+            throw error;
         }
     }
 
@@ -264,6 +388,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         formOverlay.style.display = 'flex';
+
+        // Limpar formulário
+        operacaoForm.reset();
+        document.getElementById('localizacaoInfo').style.display = 'none';
+        document.getElementById('latitude').textContent = '';
+        document.getElementById('longitude').textContent = '';
     }
 
     /**
@@ -315,17 +445,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 item.classList.add('operacao-item');
 
                 const dataHora = op.inicio_operacao ? new Date(op.inicio_operacao).toLocaleString() : 'N/A';
+                const operador = op.nomeOperador || op.nome_operador || 'Não informado';
+                const auxiliar = op.nomeAuxiliar || op.auxiliarName || op.nome_auxiliar || 'Não informado';
 
                 item.innerHTML = `
                     <div class="operacao-header">
-                        <h3>${op.tipo_operacao}</h3>
+                        <h3>${op.tipo_operacao || op.tipo}</h3>
                         <span class="operacao-data">${dataHora}</span>
                     </div>
                     <div class="operacao-body">
-                        <p><strong>Local:</strong> ${op.nome_cidade}, ${op.nome_poco_serv}</p>
-                        <p><strong>Operador:</strong> ${op.nome_operador}</p>
-                        <p><strong>OP/Auxiliar:</strong> ${op.nome_op_aux || 'Sistema'}</p>
-                        <p><strong>Volume:</strong> ${op.volume_bbl} bbl</p>
+                        <p><strong>Local:</strong> ${op.nome_cidade || op.cidade || ''}, ${op.nome_poco_serv || op.local || ''}</p>
+                        <p><strong>Operador:</strong> ${operador}</p>
+                        <p><strong>Auxiliar:</strong> ${auxiliar}</p>
+                        <p><strong>Volume:</strong> ${op.volume_bbl || op.volumeBbl || 'N/A'} bbl</p>
+                        <p><strong>Temperatura:</strong> ${op.temperatura || 'N/A'} °C</p>
+                        <p><strong>Pressão:</strong> ${op.pressao || 'N/A'} PSI</p>
+                        <p><strong>Observações:</strong> ${op.descricao_atividades || op.observacoes || 'Nenhuma observação'}</p>
                     </div>
                 `;
 
@@ -340,3 +475,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Inicializar a página carregando o histórico
     carregarHistoricoOperacoes();
 });
+
+// Função para salvar operação
+async function createOperacao(operacao) {
+    return await window.api.saveOperacao(operacao);
+}
+
+// Salvar uma mobilização
+async function salvarMobilizacao(mobilizacao) {
+    return await window.api.saveMobilizacao(mobilizacao);
+}
