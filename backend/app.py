@@ -9,19 +9,13 @@ from routes import routes
 # Chave secreta para JWT (em produção, use uma variável de ambiente)
 SECRET_KEY = "sua-chave-secreta-aqui"
 
-# Criar as tabelas no banco de dados
-Base.metadata.create_all(bind=engine)
-
 # Inicializar a aplicação Flask
 app = Flask(__name__)
 # Habilitar CORS para todas as rotas
 CORS(app)
-# Configuração do banco de dados
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///op.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Inicializar o db com o app
-db.init_app(app)
+# Criar as tabelas no banco de dados
+Base.metadata.create_all(bind=engine)
 
 # Registrar o blueprint de rotas
 app.register_blueprint(routes)
@@ -191,8 +185,7 @@ def criar_usuario():
     novo_usuario = models.Usuario(
         nome=data['nome'],
         matricula=data['matricula'],
-        senha=data['senha'],  # Em produção, aplique hash na senha
-        auxiliar=data.get('auxiliar', '')
+        senha=data['senha']  # Em produção, aplique hash na senha
     )
     
     db_session.add(novo_usuario)
@@ -205,6 +198,161 @@ def criar_usuario():
         'mensagem': 'Usuário criado com sucesso!'
     }), 201
 
+@app.route('/operacoes', methods=['GET', 'POST'])
+@token_required
+def handle_operacoes():
+    db_session = next(get_db())
+    
+    if request.method == 'GET':
+        operacoes = db_session.query(models.Operacao).all()
+        print("Operacoes encontradas:", len(operacoes))  # Log para debug
+        
+        # Adicionar log para debug dos primeiros registros
+        for op in operacoes[:2]:
+            print(f"Operação ID: {op.id}")
+            print(f"Temperatura: {op.temperatura}")
+            print(f"Pressão: {op.pressao}")
+            
+        return jsonify([{
+            'id': op.id,
+            'inicio_operacao': op.inicio_operacao.isoformat() if op.inicio_operacao else None,
+            'fim_operacao': op.fim_operacao.isoformat() if op.fim_operacao else None,
+            'nome_op_aux': op.nome_op_aux,
+            'tipo_operacao': op.tipo_operacao,
+            'nome_cidade': op.nome_cidade,
+            'nome_poco_serv': op.nome_poco_serv,
+            'nome_operador': op.nome_operador,
+            'volume_bbl': op.volume_bbl,
+            'temperatura': float(op.temperatura) if op.temperatura is not None else 0,
+            'pressao': float(op.pressao) if op.pressao is not None else 0,
+            'descricao_atividades': op.descricao_atividades,
+            'latitude': op.latitude,
+            'longitude': op.longitude,
+            'km_inicial': op.km_inicial,
+            'km_final': op.km_final,
+            'deslocamento_id': op.deslocamento_id,
+            'mobilizacao_inicio': op.mobilizacao_inicio.isoformat() if op.mobilizacao_inicio else None,
+            'mobilizacao_fim': op.mobilizacao_fim.isoformat() if op.mobilizacao_fim else None,
+            'mobilizacao_status_inicio': op.mobilizacao_status_inicio,
+            'mobilizacao_status_fim': op.mobilizacao_status_fim,
+            'mobilizacao_duracao': op.mobilizacao_duracao
+        } for op in operacoes])
+    
+    if request.method == 'POST':
+        dados = request.get_json()
+        print("Dados recebidos:", dados)  # Log para debug
+        
+        # Verificar se temos pelo menos os campos mínimos necessários
+        if not dados:
+            return jsonify({'mensagem': 'Nenhum dado foi enviado!'}), 400
+            
+        # Criar nova operação com campos adaptados do frontend
+        try:
+            operacao = models.Operacao(
+                inicio_operacao=datetime.fromisoformat(f"{dados.get('data')}T{dados.get('horaInicio')}") if dados.get('data') and dados.get('horaInicio') else datetime.utcnow(),
+                fim_operacao=datetime.fromisoformat(f"{dados.get('data')}T{dados.get('horaFim')}") if dados.get('data') and dados.get('horaFim') else None,
+                nome_op_aux=dados.get('nomeAuxiliar', ''),  # Alterado para usar nomeAuxiliar
+                tipo_operacao=dados.get('tipo', ''),
+                nome_cidade=dados.get('cidade', ''),
+                nome_poco_serv=dados.get('local', ''),
+                nome_operador=dados.get('nomeOperador', ''),  # Alterado para usar nomeOperador
+                volume_bbl=float(dados.get('volumeBbl', 0)),
+                temperatura=float(dados.get('temperatura', 0)),
+                pressao=float(dados.get('pressao', 0)),
+                descricao_atividades=dados.get('observacoes', ''),  # Alterado para usar observacoes
+                latitude=float(dados.get('latitude', 0)),
+                longitude=float(dados.get('longitude', 0)),
+                km_inicial=float(dados.get('km_inicial', 0)),
+                km_final=float(dados.get('km_final', 0)),
+                deslocamento_id=int(dados.get('deslocamentoId')) if dados.get('deslocamentoId') and dados.get('deslocamentoId').strip() else None,
+                # Campos de mobilização
+                mobilizacao_inicio=dados.get('mobilizacao_inicio'),
+                mobilizacao_fim=dados.get('mobilizacao_fim'),
+                mobilizacao_status_inicio=dados.get('mobilizacao_status_inicio'),
+                mobilizacao_status_fim=dados.get('mobilizacao_status_fim'),
+                mobilizacao_duracao=dados.get('mobilizacao_duracao')
+            )
+            
+            db_session.add(operacao)
+            db_session.commit()
+            
+            return jsonify({
+                'id': operacao.id,
+                'mensagem': 'Operação criada com sucesso!'
+            }), 201
+            
+        except Exception as e:
+            db_session.rollback()
+            print(f"Erro ao salvar operação: {str(e)}")
+            return jsonify({'mensagem': f'Erro ao salvar operação: {str(e)}'}), 500
+
+# Adicione essa nova rota depois de todas as outras rotas existentes
+
+@app.route('/relatorios/operacoes', methods=['GET'])
+@token_required
+def relatorio_operacoes():
+    db_session = next(get_db())
+    
+    # Filtros opcionais
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    tipo = request.args.get('tipo')
+    
+    # Construir a query com filtros
+    query = db_session.query(models.Operacao)
+    
+    if data_inicio:
+        data_inicio = datetime.fromisoformat(data_inicio)
+        query = query.filter(models.Operacao.inicio_operacao >= data_inicio)
+        
+    if data_fim:
+        data_fim = datetime.fromisoformat(data_fim)
+        query = query.filter(models.Operacao.inicio_operacao <= data_fim)
+        
+    if tipo:
+        query = query.filter(models.Operacao.tipo_operacao == tipo)
+    
+    # Executar a query
+    operacoes = query.all()
+    
+    # Log para debug - exibe as primeiras operações
+    for op in operacoes[:3]:
+        print(f"Debug: Operação ID {op.id}, Temperatura: {op.temperatura}, Pressão: {op.pressao}")
+    
+    # Converter para formato JSON com todos os campos
+    return jsonify([{
+        'id': op.id,
+        'inicio_operacao': op.inicio_operacao.isoformat() if op.inicio_operacao else None,
+        'fim_operacao': op.fim_operacao.isoformat() if op.fim_operacao else None,
+        'nome_op_aux': op.nome_op_aux,
+        'tipo_operacao': op.tipo_operacao,
+        'nome_cidade': op.nome_cidade,
+        'nome_poco_serv': op.nome_poco_serv,
+        'nome_operador': op.nome_operador,
+        'volume_bbl': float(op.volume_bbl) if op.volume_bbl is not None else 0,
+        'temperatura': float(op.temperatura) if op.temperatura is not None else 0,
+        'pressao': float(op.pressao) if op.pressao is not None else 0,
+        'descricao_atividades': op.descricao_atividades,
+        'latitude': op.latitude,
+        'longitude': op.longitude,
+        'km_inicial': op.km_inicial,
+        'km_final': op.km_final,
+        'deslocamento_id': op.deslocamento_id,
+        # Dados adicionais que podem estar faltando nos relatórios
+        'auxiliar': op.nome_op_aux,
+        'cidade': op.nome_cidade,
+        'observacoes': op.descricao_atividades,
+        # Formatação para exibição em relatório
+        'data_formatada': op.inicio_operacao.strftime('%d/%m/%Y') if op.inicio_operacao else '',
+        'hora_inicio': op.inicio_operacao.strftime('%H:%M') if op.inicio_operacao else '',
+        'hora_fim': op.fim_operacao.strftime('%H:%M') if op.fim_operacao else '',
+        'local': op.nome_poco_serv  # Mapeamento do campo 'local' do frontend
+    } for op in operacoes])
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    db.remove()
+
 # Iniciar o servidor quando este arquivo for executado diretamente
 if __name__ == '__main__':
     # Criar usuário padrão para testes se não existir
@@ -215,8 +363,7 @@ if __name__ == '__main__':
             novo_usuario = models.Usuario(
                 nome='Administrador',
                 matricula='admin',
-                senha='admin',
-                auxiliar='Auxiliar Admin'
+                senha='admin'
             )
             db_session.add(novo_usuario)
             db_session.commit()

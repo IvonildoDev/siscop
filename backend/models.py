@@ -67,8 +67,8 @@ class Usuario(Base):
     id = Column(Integer, primary_key=True)
     nome = Column(String(100), nullable=False)
     matricula = Column(String(20), nullable=False, unique=True)
-    senha = Column(String(100), nullable=False)
-    auxiliar = Column(String(100))
+    senha = Column(String(255), nullable=False)
     
-    def __repr__(self):
-        return f"<Usuario(id={self.id}, nome='{self.nome}', matricula='{self.matricula}')>"
+    # Timestamp de criação/atualização (opcional)
+    criado_em = Column(DateTime, default=datetime.datetime.utcnow)
+    atualizado_em = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
